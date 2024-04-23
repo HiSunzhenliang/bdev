@@ -34,14 +34,21 @@ func Remove(name string) {
 	//TODO: 下面是你自己的实现代码
 }
 
-//从设备的某个位置读出len(b)这么多数据，目前只支持一次读出512字节
-func (bd *BD) ReadAt(b []byte, off int64) error {
+//从设备的某个位置读出512Bytes这么多数据，目前只支持一次读出512字节
+//blk -- 是一个512Bytes的数据块
+//lba -- Logic Block Address，是一个数据块的地址，第1个512B的lba地址为0,
+//       第2个512B的lba地址为1, ...
+func (bd *BD) ReadAt(blk []byte, lba int64) error {
 	//TODO: 下面是你自己的实现代码
 	return nil
 }
 
-//这是一个原地更新的接口，把512字节数据写到off这个位置
-func (bd *BD) WriteAt(b []byte, off int64) error {
+//这是一个原地更新的接口，把512字节数据写到lba这个位置。如果这个位置以前就存在
+//数据，那么覆盖掉这些数据。
+//blk -- 是一个512Bytes的数据块
+//lba -- Logic Block Address，是一个数据块的地址，第1个512B的lba地址为0,
+//       第2个512B的lba地址为1, ...
+func (bd *BD) WriteAt(blk []byte, lba int64) error {
 	//TODO: 下面是你自己的实现代码
 	return nil
 }

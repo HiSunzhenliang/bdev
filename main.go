@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	f := aof.Create("test.dat")
+	f, _ := aof.Create("test.dat")
 	fmt.Printf("f = %v\n", f)
 }
 
