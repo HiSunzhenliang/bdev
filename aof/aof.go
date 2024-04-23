@@ -11,10 +11,6 @@ type AOF struct {
 	f *os.File
 }
 
-func main() {
-	fmt.Printf("hello\n")
-}
-
 //对已经存在的文件，用open打开
 func Open(name string) *AOF {
 	file := AOF {}
