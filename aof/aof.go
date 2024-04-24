@@ -32,6 +32,21 @@ func Create(name string) (a *AOF, err error) {
 	return &file, nil
 }
 
+/*
+//返回文件属性包括下面一些信息
+type FileInfo interface {
+	Name() string       // base name of the file
+	Size() int64        // length in bytes for regular files;
+	Mode() FileMode     // file mode bits
+	ModTime() time.Time // modification time
+	IsDir() bool        // abbreviation for Mode().IsDir()
+	Sys() any           // underlying data source (can return nil)
+}
+*/
+func Stat(name string)(fi os.FileInfo, err error) {
+	return os.Stat(name)
+}
+
 //删掉已经存在的文件
 func Remove(name string) {
 	err := os.Remove(name)
