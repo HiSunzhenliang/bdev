@@ -1,15 +1,29 @@
 package bd
 
 import (
-	"os"
-	"log"
+	"sync"
 )
 
-//原地更新的设备文件
+//支持原地更新的设备文件
 type BD struct {
-	//TODO: 这里定义你自己的数据结构
-}
+	name string
 
+	//当两个components执行compaction完毕之后，切换期间需要加锁
+	mutex sync.Mutex
+
+	//当前内存中可变的component
+	mutable	*MemCpnt
+
+	//当前内存中不可变的component
+	immutable *MemCpnt
+
+	//硬盘上不可变的component，cpnt文件命名采用"<name>_<level>_<seq>.cpnt"的
+	//形式，其中<name>是bd设备的名字，<level>是这个cpnt文件的层级，<seq>是
+	//合并次数的序号。LSM tree的每个层级，有一个persist文件，最底层的文件是
+	//persist[0]，更高一层的是persist[1]，...，最顶层是persist[n]。当新的
+	//immutable写入硬盘之后，就变成了persist[n+1]
+	persist []*Cpnt
+}
 
 //如果这个设备已经存在，则只能用Open打开
 func Open(name string) *BD {
@@ -38,7 +52,7 @@ func Remove(name string) {
 //blk -- 是一个512Bytes的数据块
 //lba -- Logic Block Address，是一个数据块的地址，第1个512B的lba地址为0,
 //       第2个512B的lba地址为1, ...
-func (bd *BD) ReadAt(blk []byte, lba int64) error {
+func (bd *BD) ReadAt(lba int64) (blk []byte, error) {
 	//TODO: 下面是你自己的实现代码
 	return nil
 }
