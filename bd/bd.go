@@ -52,9 +52,9 @@ func Remove(name string) {
 //blk -- 是一个512Bytes的数据块
 //lba -- Logic Block Address，是一个数据块的地址，第1个512B的lba地址为0,
 //       第2个512B的lba地址为1, ...
-func (bd *BD) ReadAt(lba int64) (blk []byte, error) {
+func (bd *BD) ReadAt(lba int64) (blk []byte, err error) {
 	//TODO: 下面是你自己的实现代码
-	return nil
+	return []byte{}, nil
 }
 
 //这是一个原地更新的接口，把512字节数据写到lba这个位置。如果这个位置以前就存在
