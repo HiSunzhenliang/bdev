@@ -67,7 +67,7 @@ func getBuf(lba, v int64) []byte {
 
 
 func TestCpnt3A(t *testing.T) {
-
+	fmt.Printf("Cpnt3A\n")
 	m1 := CreateMemCpnt("cpnt-1-2.mem")
 	for i:=int64(0); i<10; i++ {
 		b := getBuf(i, i)
@@ -75,24 +75,24 @@ func TestCpnt3A(t *testing.T) {
 	}
 	b := getBuf(20, 20)
 	m1.WriteAt(20, b)
-	c1 := CreateCpnt("c1-1-1.cpnt", 0, 1, m1)
+	c1 := CreateCpnt("test-1-1.cpnt", 0, 1, m1)
 	b1, o1 := c1.ReadAt(1)
 	Assert(o1)
 	Assert(b1[0] == 1)
 
-	m2 := CreateMemCpnt("cpnt-1-2.mem")
+	m2 := CreateMemCpnt("cpnt-2-2.mem")
 	for i:=int64(5); i<15; i++ {
 		b := getBuf(i, 10+i)
 		m2.WriteAt(i, b)
 	}
 	b = getBuf(20, 22)
 	m2.WriteAt(20, b)
-	c2 := CreateCpnt("c2-1-1.cpnt", 1, 1, m2)
+	c2 := CreateCpnt("test-2-2.cpnt", 1, 1, m2)
 	b2, o2 := c2.ReadAt(5)
 	Assert(o2)
 	Assert(b2[0] == 15)
 
-	c3 := MergeCpnt("c3-1-2.cpnt", 0, 2, c2, c1)
+	c3 := MergeCpnt("test-1-3.cpnt", 0, 2, c2, c1)
 	Assert(c3 != nil)
 
 	for i:=int64(0); i<5; i++ {
@@ -108,7 +108,7 @@ func TestCpnt3A(t *testing.T) {
 	}
 
 	c3.Close()
-	c4, err := OpenCpnt("c3-1-2.cpnt")
+	c4, err := OpenCpnt("test-1-3.cpnt")
 	Assert(err == nil)
 
 
@@ -126,5 +126,8 @@ func TestCpnt3A(t *testing.T) {
 
 }
 
+func TestOpenBD3A(t *testing.T) {
 
+	_, _ = OpenBD("./test")
+}
 

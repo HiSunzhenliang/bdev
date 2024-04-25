@@ -2,6 +2,11 @@ package bd
 
 import (
 	"sync"
+	"io/ioutil"
+	_ "log"
+	"fmt"
+	"strings"
+	"path/filepath"
 )
 
 //支持原地更新的设备文件
@@ -26,21 +31,50 @@ type BD struct {
 }
 
 //如果这个设备已经存在，则只能用Open打开
-func Open(name string) *BD {
-	bd := BD {}
+func OpenBD(name string) (*BD, error) {
+	bd := &BD {}
 
-	//TODO: 下面是你自己的实现代码
 
-	return &bd
+	dir := filepath.Dir(name)
+	base := filepath.Base(name)
+
+	entries, err := ioutil.ReadDir(dir)
+	Assert(err == nil)
+
+	n := 0
+	for _, entry := range entries {
+		name := entry.Name()
+		if filepath.Ext(name) != ".cpnt" {
+			continue
+		}
+		if !strings.HasPrefix(name, base) {
+			continue
+		}
+
+		c, err := OpenCpnt(name)
+		Assert(err == nil)
+		bd.persist = append(bd.persist, c)
+		n++
+	}
+	if n==0 {
+		return nil, fmt.Errorf("cpnt file is not found")
+	}
+
+	bd.mutable = CreateMemCpnt(name + "_mut")
+	//TODO: 对persist进行排序
+
+	return bd, nil
 }
 
 //对不存在的设备，用Create创建
-func Create(name string) *BD {
+func CreateBD(name string) (*BD, error) {
 	file := BD {}
 
 	//TODO: 下面是你自己的实现代码
 
-	return &file
+	//TODO: 先检查是否有这个文件名字的文件，如果有，则报错
+
+	return &file, nil
 }
 
 //删掉已经存在的设备
