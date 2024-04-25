@@ -44,24 +44,27 @@ func (m *MemCpnt) ReadAt(lba int64) (blk []byte, ok bool) {
 }
 
 //迭代读出所有blk
-func (m *MemCpnt) ReadIter(iter *int) (blk []byte, ok bool) {
+func (m *MemCpnt) ReadIter(iter *int) (lba int64, blk []byte, ok bool) {
 	if *iter >= len(m.lb) {
-		return []byte{}, false
+		return int64(-1), []byte{}, false
 	}
 	i := *iter
 	(*iter)++
-	return m.lb[i].buf, true
+	return m.lb[i].lba, m.lb[i].buf, true
 }
 
 //向一个内存component中写入一个blk
 func (m *MemCpnt) WriteAt(lba int64, blk []byte) (ok bool){
+	Assert(len(blk) == BlkSize)
+	b := make([]byte, BlkSize)
+	copy(b, blk)
 	i, f := m.Find(lba)
 	if f {
 		//如果这个位置已经写过数据了，则覆盖掉这个数据
-		m.lb[i].buf = blk
+		m.lb[i].buf = b
 	} else {
 		//如果这个位置没有写过数据，则插入这个数据块
-		n := &LbaBuf{lba, blk}
+		n := &LbaBuf{lba, b}
 		m.lb = append(m.lb[:i], append([]*LbaBuf{n}, m.lb[i:]...)...)
 	}
 	return true
@@ -88,12 +91,16 @@ type CpntFooter struct {
 	IdxOff int64		//索引块的起始位置
 	Level int32
 	Seq int32
-	res int64		//保留字段，暂时没有用
+	Res int64		//保留字段，暂时没有用
 }
 
 func (ft *CpntFooter)AssignName(name string) {
 	b := []byte(name)
-	for i:=0; i<NameLen; i++ {
+	n := NameLen
+	if len(b) < n {
+		n = len(b)
+	}
+	for i:=0; i<n; i++ {
 		ft.Name[i] = b[i]
 	}
 }
@@ -160,7 +167,7 @@ func CreateCpnt(name string, level, seq int32, m *MemCpnt) *Cpnt {
 
 //打开硬盘上的一个持久化的cpnt。一个CPNT只能被写一次，因此打开之后的CPNT不能再
 //被改写，只能读。
-func OpenCpnt(name string, level int) (*Cpnt, error) {
+func OpenCpnt(name string) (*Cpnt, error) {
 
 	//获取aof文件的属性，目的是：1、判断文件是否存在，如果不存在，则
 	//返回错误；2、获取文件size，后面读取footer的时候会用到size；
@@ -181,7 +188,10 @@ func OpenCpnt(name string, level int) (*Cpnt, error) {
 	//读出footer所在位置的bytes数据
 	b := make([]byte, FooterLen)
 	n, err2 := c.a.ReadAt(b, size - FooterLen)
-	Assert(err2 != nil)
+	if err2 != nil {
+		log.Printf("err2 = %v\n", err2)
+	}
+	Assert(err2 == nil)
 	Assert(n == FooterLen)
 
 	//把bytes数据转换为footer结构体
@@ -200,8 +210,8 @@ func OpenCpnt(name string, level int) (*Cpnt, error) {
 	//从硬盘上读出index区域，把数据存储字节数组b
 	b = make([]byte, loBytes)
 	n, err2 = c.a.ReadAt(b, ft.IdxOff)
-	Assert(err2 != nil)
-	Assert(n == FooterLen)
+	Assert(err2 == nil)
+	Assert(n == loBytes)
 
 	//把字节数组b中的LbaOff数据，转换之后存入c.lo数组中
 	r = bytes.NewReader(b)
@@ -209,7 +219,7 @@ func OpenCpnt(name string, level int) (*Cpnt, error) {
 		if err := binary.Read(r, binary.LittleEndian, lo); err != nil {
 			log.Fatalf("binary.Read failed: %v\n", err)
 		}
-		c.lo[i] = *lo
+		c.lo = append(c.lo, *lo)
 	}
 
 	return c, nil
@@ -272,14 +282,14 @@ func MergeCpnt(name string, level, seq int32, a *Cpnt, b *Cpnt) *Cpnt {
 		Assert(ok)
 
 		off := c.a.Append(blk)
-		Assert(off == ft.NumBlk)
+		Assert(off == (BlkSize * ft.NumBlk))
 
 		ft.NumBlk++
 	}
 
 	ft.IdxOff = ft.NumBlk * BlkSize
 	writeFooter(c, ft)
-	return nil
+	return c
 }
 
 //在LbaOff数组中查找lba，如果找到则返回index和true
