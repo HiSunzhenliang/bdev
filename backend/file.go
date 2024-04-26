@@ -5,16 +5,16 @@ import (
 	"sync"
 )
 
-type FileBackend struct {
+type BdBackend struct {
 	file *os.File
 	lock sync.RWMutex
 }
 
-func NewFileBackend(file *os.File) *FileBackend {
-	return &FileBackend{file, sync.RWMutex{}}
+func NewBdBackend(file *os.File) *BdBackend {
+	return &BdBackend{file, sync.RWMutex{}}
 }
 
-func (b *FileBackend) ReadAt(p []byte, off int64) (n int, err error) {
+func (b *BdBackend) ReadAt(p []byte, off int64) (n int, err error) {
 	b.lock.RLock()
 
 	n, err = b.file.ReadAt(p, off)
@@ -24,7 +24,7 @@ func (b *FileBackend) ReadAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-func (b *FileBackend) WriteAt(p []byte, off int64) (n int, err error) {
+func (b *BdBackend) WriteAt(p []byte, off int64) (n int, err error) {
 	b.lock.Lock()
 
 	n, err = b.file.WriteAt(p, off)
@@ -34,7 +34,7 @@ func (b *FileBackend) WriteAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-func (b *FileBackend) Size() (int64, error) {
+func (b *BdBackend) Size() (int64, error) {
 	stat, err := b.file.Stat()
 	if err != nil {
 		return -1, err
@@ -43,6 +43,7 @@ func (b *FileBackend) Size() (int64, error) {
 	return stat.Size(), nil
 }
 
-func (b *FileBackend) Sync() error {
+func (b *BdBackend) Sync() error {
 	return b.file.Sync()
 }
+

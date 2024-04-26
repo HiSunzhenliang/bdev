@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/pojntfx/go-nbd/pkg/backend"
+	"bdev/backend"
 	"github.com/pojntfx/go-nbd/pkg/client"
 	"github.com/pojntfx/go-nbd/pkg/server"
 )
@@ -47,7 +47,7 @@ func NbdServer() {
 	}
 	defer f.Close()
 
-	b := backend.NewFileBackend(f)
+	b := backend.NewBdBackend(f)
 
 	clients := 0
 	for {
