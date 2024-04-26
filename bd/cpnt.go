@@ -27,6 +27,10 @@ func CreateMemCpnt(name string) *MemCpnt {
 	return mc
 }
 
+func (m *MemCpnt) Size() int {
+	return len(m.lb)
+}
+
 func (m *MemCpnt) Find(lba int64) (idx int, found bool) {
 	idx, found = sort.Find(len(m.lb), func(i int) int {
 		return int(lba - m.lb[i].lba)
@@ -80,18 +84,28 @@ type LbaOff struct {
 type Cpnt struct {
 	a *aof.AOF
 	lo []LbaOff
-	closed bool
+	ft CpntFooter
 }
 
-const NameLen = 32
-const FooterLen = 64
+const NameLen = 32		//cpnt文件名的长度
+const FooterLen = 128		//整个footer的长度
 type CpntFooter struct {
 	Name [NameLen]byte	//CPNT文件的名字
 	NumBlk int64		//总的块数量
 	IdxOff int64		//索引块的起始位置
 	Level int32
 	Seq int32
-	Res int64		//保留字段，暂时没有用
+	Res [9]int64		//保留字段，暂时没有用
+}
+
+/* 下面这些定义，目的是用来对[]*Cpnt排序 */
+type TreeCpnt []*Cpnt
+func (tc TreeCpnt) Len() int           { return len(tc) }
+func (tc TreeCpnt) Swap(i, j int)      { tc[i], tc[j] = tc[j], tc[i] }
+func (tc TreeCpnt) Less(i, j int) bool {
+	return tc[i].ft.Level < tc[j].ft.Level ||
+		(tc[i].ft.Level == tc[j].ft.Level &&
+		 tc[i].ft.Seq < tc[j].ft.Seq )
 }
 
 func (ft *CpntFooter)AssignName(name string) {
@@ -106,17 +120,22 @@ func (ft *CpntFooter)AssignName(name string) {
 }
 
 func newCpnt(name string, level, seq int32) (*Cpnt, *CpntFooter) {
-	ft := &CpntFooter {}
+	c := &Cpnt{}
+	ft := &c.ft
 	ft.AssignName(name)
 	ft.Level = level
 	ft.Seq = seq
-	c := &Cpnt{}
 	a, err := aof.Create(name)
 	if err != nil {
 		log.Fatalf("create AOF file error\n")
 	}
 	c.a = a
 	return c, ft
+}
+
+
+func (c *Cpnt) Size() int {
+	return len(c.lo)
 }
 
 func writeFooter(c *Cpnt, ft *CpntFooter) {
@@ -195,7 +214,7 @@ func OpenCpnt(name string) (*Cpnt, error) {
 	Assert(n == FooterLen)
 
 	//把bytes数据转换为footer结构体
-	ft := &CpntFooter {}
+	ft := &c.ft
 	r := bytes.NewReader(b)
 	if err := binary.Read(r, binary.LittleEndian, ft); err != nil {
 		log.Fatalf("binary.Read failed: %v\n", err)
