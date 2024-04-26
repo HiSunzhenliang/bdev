@@ -32,8 +32,10 @@ type BD struct {
 	//immutable写入硬盘之后，就变成了persist[n+1]
 	persist []*Cpnt
 
-	c chan struct {}
+	c chan int	//这个channel用来通知compaction开始工作
 	seq int32
+	closing bool
+	wg sync.WaitGroup
 }
 
 func getCpntFiles(name string)([]string) {
@@ -65,8 +67,26 @@ func dumpBd(bd *BD) {
 	}
 }
 
+func (bd *BD)merge(p, q int) {
+	ps := bd.persist[p].Size()
+	qs := bd.persist[q].Size()
+	//如果上一级x10比下一级大，则合并
+	if ps * 10 > qs {
+		bd.mutex.Unlock()
+		c := MergeCpnt(bd.name, int32(q), bd.seq,
+			bd.persist[p], bd.persist[q])
+		bd.mutex.Lock()
+		bd.seq++
+		bd.persist[q] = c
+		bd.persist = append(bd.persist[:p],
+				bd.persist[p+1:]...)
+	}
+}
+
+const WrLimit = 10
 func (bd *BD)Compaction() {
-	for {
+	defer bd.wg.Done()
+	for !bd.closing {
 		select {
 		case <-bd.c:
 		case <-time.After(1*time.Second):
@@ -74,8 +94,7 @@ func (bd *BD)Compaction() {
 
 		bd.mutex.Lock()
 		//如果mutable里面大于10个block，则刷盘
-		limit := 10
-		if bd.mutable.Size() > limit {
+		if (bd.mutable.Size() > WrLimit) || bd.closing {
 			bd.immutable = bd.mutable
 			bd.mutable = CreateMemCpnt(bd.name + "_mut")
 			bd.mutex.Unlock()
@@ -88,23 +107,11 @@ func (bd *BD)Compaction() {
 		}
 
 		p := len(bd.persist) - 1
-		for p > 0 {
+		for p > 0 && !bd.closing {
 			p := len(bd.persist) - 1
 			for p > 0 {
 				q := p - 1
-				ps := bd.persist[p].Size()
-				qs := bd.persist[q].Size()
-				//如果上一级x10比下一级大，则合并
-				if ps * 10 > qs {
-					bd.mutex.Unlock()
-					c := MergeCpnt(bd.name, int32(q), bd.seq,
-						bd.persist[p], bd.persist[q])
-					bd.mutex.Lock()
-					bd.seq++
-					bd.persist[q] = c
-					bd.persist = append(bd.persist[:p],
-							bd.persist[p+1:]...)
-				}
+				bd.merge(p, q)
 				p--
 			}
 		}
@@ -118,7 +125,7 @@ func NewBd(name string) *BD {
 	bd.immutable = nil
 	bd.name = name
 	bd.seq = 0
-	bd.c = make(chan struct{}, 10)
+	bd.c = make(chan int, 10)
 	return bd
 }
 
@@ -135,6 +142,9 @@ func OpenBD(name string) (*BD, error) {
 		c, err := OpenCpnt(fname)
 		Assert(err == nil)
 		bd.persist = append(bd.persist, c)
+		if bd.seq < c.ft.Seq {
+			bd.seq = c.ft.Seq + 1
+		}
 	}
 
 	//对persist进行排序
@@ -154,6 +164,14 @@ func CreateBD(name string) (*BD, error) {
 	bd := NewBd(name)
 
 	return bd, nil
+}
+
+func (bd *BD)Close() {
+	bd.mutex.Lock()
+	bd.wg.Add(1)
+	bd.c <- 2
+	bd.mutex.Unlock()
+	bd.wg.Wait()
 }
 
 //删掉已经存在的设备
@@ -198,6 +216,9 @@ func (bd *BD) WriteAt(lba int64, blk []byte) (ok bool) {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 	ok = bd.mutable.WriteAt(lba, blk)
+	if bd.mutable.Size() > WrLimit {
+		bd.c <- 1
+	}
 	return ok
 }
 
