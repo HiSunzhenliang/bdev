@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"net"
-	"os"
 
 	"bdev/backend"
 	"github.com/pojntfx/go-nbd/pkg/client"
@@ -12,7 +11,7 @@ import (
 )
 
 func NbdServer() {
-	file := flag.String("file", "disk.img", "Path to file to expose")
+	file := flag.String("file", "disk", "Path to file to expose")
 	laddr := flag.String("laddr", ":10809", "Listen address")
 	network := flag.String("network", "tcp", "Listen network (e.g. `tcp` or `unix`)")
 	name := flag.String("name", "default", "Export name")
@@ -33,21 +32,7 @@ func NbdServer() {
 
 	log.Println("Listening on", l.Addr())
 
-	var f *os.File
-	if *readOnly {
-		f, err = os.OpenFile(*file, os.O_RDONLY, 0644)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		f, err = os.OpenFile(*file, os.O_RDWR, 0644)
-		if err != nil {
-			panic(err)
-		}
-	}
-	defer f.Close()
-
-	b := backend.NewBdBackend(f)
+	b := backend.NewBdBackend(*file, 100*1024*1024)
 
 	clients := 0
 	for {
