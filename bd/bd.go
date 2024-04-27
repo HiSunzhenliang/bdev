@@ -192,7 +192,6 @@ func (bd *BD) ReadAt(lba int64) (blk []byte, ok bool) {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 
-
 	if b, ok := bd.mutable.ReadAt(lba); ok {
 		return b, true
 	}

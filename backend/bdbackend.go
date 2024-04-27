@@ -1,49 +1,75 @@
 package backend
 
 import (
-	"os"
-	"sync"
+	"bdev/bd"
+	"fmt"
+	"log"
 )
 
 type BdBackend struct {
-	file *os.File
-	lock sync.RWMutex
+	name string
+	size int64
+	bd   *bd.BD
 }
 
-func NewBdBackend(file *os.File) *BdBackend {
-	return &BdBackend{file, sync.RWMutex{}}
+func NewBdBackend(name string, size int64) *BdBackend {
+	bb := &BdBackend{}
+	bb.name = name
+	bb.size = size
+	b, err := bd.OpenBD(name)
+	if err != nil {
+		b, err = bd.CreateBD(name)
+	}
+
+	if err != nil {
+		log.Printf("Cannot open the block device\n")
+		return nil
+	}
+
+	bb.bd = b
+
+	return bb
 }
 
 func (b *BdBackend) ReadAt(p []byte, off int64) (n int, err error) {
-	b.lock.RLock()
-
-	n, err = b.file.ReadAt(p, off)
-
-	b.lock.RUnlock()
-
-	return
+	n = len(p)
+	bd.Assert((n % bd.BlkSize) == 0)
+	bd.Assert((off % bd.BlkSize) == 0)
+	k := n / bd.BlkSize
+	for i:=0; i<k; i++ {
+		o := bd.BlkSize * i
+		lba := (off + int64(o)) / bd.BlkSize
+		b, ok := b.bd.ReadAt(lba)
+		if !ok {
+			return 0, fmt.Errorf("unknow error")
+		}
+		copy(p[o:], b)
+	}
+	return n, nil
 }
 
 func (b *BdBackend) WriteAt(p []byte, off int64) (n int, err error) {
-	b.lock.Lock()
+	n = len(p)
+	bd.Assert((n % bd.BlkSize) == 0)
+	bd.Assert((off % bd.BlkSize) == 0)
+	k := n / bd.BlkSize
+	for i:=0; i<k; i++ {
+		o := bd.BlkSize * i
+		lba := (off + int64(o)) / bd.BlkSize
+		ok := b.bd.WriteAt(lba, p[o:(o+bd.BlkSize)])
+		if !ok {
+			return -1, fmt.Errorf("unknow error")
+		}
+	}
 
-	n, err = b.file.WriteAt(p, off)
-
-	b.lock.Unlock()
-
-	return
+	return n, nil
 }
 
 func (b *BdBackend) Size() (int64, error) {
-	stat, err := b.file.Stat()
-	if err != nil {
-		return -1, err
-	}
-
-	return stat.Size(), nil
+	return b.size, nil
 }
 
 func (b *BdBackend) Sync() error {
-	return b.file.Sync()
+	return nil
 }
 
