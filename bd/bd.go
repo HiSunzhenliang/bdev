@@ -85,16 +85,24 @@ func (bd *BD)merge(p, q int) {
 
 const WrLimit = 10
 func (bd *BD)Compaction() {
+	pl()
 	defer bd.wg.Done()
+	pl()
 	for !bd.closing {
 		select {
-		case <-bd.c:
+		case a := <-bd.c:
+			pl()
+			fmt.Printf("aaa: len(bd.c)=%d, a=%d\n", len(bd.c), a)
 		case <-time.After(1*time.Second):
+			pl()
 		}
+		pl()
 
 		bd.mutex.Lock()
+		pl()
 		//如果mutable里面大于10个block，则刷盘
 		if (bd.mutable.Size() > WrLimit) || bd.closing {
+		pl()
 			bd.immutable = bd.mutable
 			bd.mutable = CreateMemCpnt(bd.name + "_mut")
 			bd.mutex.Unlock()
@@ -106,15 +114,20 @@ func (bd *BD)Compaction() {
 			bd.immutable = nil
 		}
 
+		pl()
 		p := len(bd.persist) - 1
-		for p > 0 && !bd.closing {
-			p := len(bd.persist) - 1
-			for p > 0 {
+		for p>0 && !bd.closing {
+			fmt.Printf("a0: p=%d\n", p)
+			p = len(bd.persist) - 1
+			fmt.Printf("a1: p=%d\n", p)
+			for p > 0 && !bd.closing {
 				q := p - 1
 				bd.merge(p, q)
 				p--
 			}
+			fmt.Printf("a2: p=%d\n", p)
 		}
+		pl()
 		bd.mutex.Unlock()
 	}
 }
@@ -174,8 +187,8 @@ func (bd *BD)Close() {
 	bd.mutex.Lock()
 	bd.wg.Add(1)
 	bd.closing = true
-	bd.c <- 2
 	bd.mutex.Unlock()
+	bd.c <- 2
 	bd.wg.Wait()
 }
 
@@ -219,10 +232,13 @@ func (bd *BD) ReadAt(lba int64) (blk []byte, ok bool) {
 //       第2个512B的lba地址为1, ...
 func (bd *BD) WriteAt(lba int64, blk []byte) (ok bool) {
 	bd.mutex.Lock()
-	defer bd.mutex.Unlock()
 	ok = bd.mutable.WriteAt(lba, blk)
+	bd.mutex.Unlock()
+
 	if bd.mutable.Size() > WrLimit {
+		fmt.Printf("len(bd.c)=%d\n", len(bd.c))
 		bd.c <- 1
+		pl()
 	}
 	return ok
 }

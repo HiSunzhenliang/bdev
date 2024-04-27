@@ -4,6 +4,7 @@ import (
 	"bdev/aof"
 	"sort"
 	"log"
+	"fmt"
 	"bytes"
 	"encoding/binary"
 )
@@ -119,7 +120,8 @@ func (ft *CpntFooter)AssignName(name string) {
 	}
 }
 
-func newCpnt(name string, level, seq int32) (*Cpnt, *CpntFooter) {
+func newCpnt(baseName string, level, seq int32) (*Cpnt, *CpntFooter) {
+	name := fmt.Sprintf("%s-%d-%d.cpnt", baseName, level, seq)
 	c := &Cpnt{}
 	ft := &c.ft
 	ft.AssignName(name)

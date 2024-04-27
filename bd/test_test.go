@@ -5,6 +5,8 @@ import (
 	_ "os"
 	"fmt"
 	_ "encoding/binary"
+	"math/rand"
+	"time"
 )
 
 func TestMemCpnt3A(t *testing.T) {
@@ -75,7 +77,7 @@ func TestCpnt3A(t *testing.T) {
 	}
 	b := getBuf(20, 20)
 	m1.WriteAt(20, b)
-	c1 := CreateCpnt("test-1-1.cpnt", 0, 1, m1)
+	c1 := CreateCpnt("test", 0, 1, m1)
 	b1, o1 := c1.ReadAt(1)
 	Assert(o1)
 	Assert(b1[0] == 1)
@@ -87,12 +89,12 @@ func TestCpnt3A(t *testing.T) {
 	}
 	b = getBuf(20, 22)
 	m2.WriteAt(20, b)
-	c2 := CreateCpnt("test-2-2.cpnt", 1, 1, m2)
+	c2 := CreateCpnt("test", 1, 2, m2)
 	b2, o2 := c2.ReadAt(5)
 	Assert(o2)
 	Assert(b2[0] == 15)
 
-	c3 := MergeCpnt("test-1-3.cpnt", 0, 2, c2, c1)
+	c3 := MergeCpnt("test", 0, 3, c2, c1)
 	Assert(c3 != nil)
 
 	for i:=int64(0); i<5; i++ {
@@ -108,7 +110,7 @@ func TestCpnt3A(t *testing.T) {
 	}
 
 	c3.Close()
-	c4, err := OpenCpnt("test-1-3.cpnt")
+	c4, err := OpenCpnt("test-0-3.cpnt")
 	Assert(err == nil)
 
 
@@ -126,10 +128,27 @@ func TestCpnt3A(t *testing.T) {
 
 }
 
+
+func init() {
+    // 使用当前时间作为随机种子
+    rand.Seed(time.Now().UnixNano())
+}
+
+func RangeRand(m, n int) int {
+    return m + rand.Intn(n-m+1)
+}
+
 func TestCreateBD3A(t *testing.T) {
 	fmt.Printf("CreateDB3A\n")
 	db, err := CreateBD("testa")
 	Assert(err == nil)
+
+	for i := 0; i < 100; i++ {
+		lba := int64(RangeRand(0, 20))
+		b := make([]byte, BlkSize)
+		db.WriteAt(lba, b)
+		fmt.Printf("i=%d, lba = %d\n", i, lba)
+	}
 
 	db.Close()
 }
