@@ -10,7 +10,7 @@ import (
 )
 
 func TestMemCpnt3A(t *testing.T) {
-	fmt.Printf("MemCpnt3A\n")
+	fmt.Printf("MemCpnt3A")
 	m := CreateMemCpnt("cpnt-1-2.mem")
 	Assert(m != nil)
 
@@ -59,6 +59,7 @@ func TestMemCpnt3A(t *testing.T) {
 	Assert(lst[3] == 10)
 	Assert(lst[4] == 12)
 	Assert(lst[5] == 13)
+	fmt.Printf("............pass\n")
 }
 
 func getBuf(lba, v int64) []byte {
@@ -69,7 +70,7 @@ func getBuf(lba, v int64) []byte {
 
 
 func TestCpnt3A(t *testing.T) {
-	fmt.Printf("Cpnt3A\n")
+	fmt.Printf("Cpnt3A")
 	m1 := CreateMemCpnt("cpnt-1-2.mem")
 	for i:=int64(0); i<10; i++ {
 		b := getBuf(i, i)
@@ -126,6 +127,7 @@ func TestCpnt3A(t *testing.T) {
 		Assert(b[0]==byte(10+i))
 	}
 
+	fmt.Printf("...............pass\n")
 }
 
 
@@ -138,23 +140,68 @@ func RangeRand(m, n int) int {
     return m + rand.Intn(n-m+1)
 }
 
-func TestCreateBD3A(t *testing.T) {
-	fmt.Printf("CreateDB3A\n")
-	db, err := CreateBD("testa")
+func fillRand(b []byte) {
+	for i, _ := range b {
+		b[i] = byte(RangeRand(0, 255))
+	}
+}
+
+func sameBuf(b0, b1 []byte) bool {
+	if len(b0) != len(b1) {
+		return false
+	}
+	for i:=0; i<len(b0); i++ {
+		if b0[i] != b1[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testNewBd(name string) (*BD, map[int64][]byte) {
+	bd, err := CreateBD(name)
 	Assert(err == nil)
+
+	bmap := make(map[int64][]byte)
 
 	for i := 0; i < 100; i++ {
 		lba := int64(RangeRand(0, 20))
 		b := make([]byte, BlkSize)
-		db.WriteAt(lba, b)
-		fmt.Printf("i=%d, lba = %d\n", i, lba)
+		fillRand(b)
+		bd.WriteAt(lba, b)
+		bmap[lba] = b
 	}
 
-	db.Close()
+	return bd, bmap
+}
+
+func testReadBd(bd *BD, bmap map[int64][]byte) {
+	for lba, b0 := range(bmap) {
+		b1, ok := bd.ReadAt(lba)
+		Assert(ok)
+		Assert(sameBuf(b0, b1))
+	}
+}
+
+func TestCreateBD3A(t *testing.T) {
+	fmt.Printf("CreateDB3A")
+	bd, bmap := testNewBd("testa")
+	testReadBd(bd, bmap)
+	bd.Close()
+	fmt.Printf("...........pass\n")
 }
 
 func TestOpenBD3A(t *testing.T) {
-	fmt.Printf("OpenDB3A\n")
+	fmt.Printf("OpenDB3A")
+
+	bd, bmap := testNewBd("testb")
+	bd.Close()
+	bd1, err := OpenBD("testb")
+	Assert(err == nil)
+	testReadBd(bd1, bmap)
+	bd1.Close()
+	fmt.Printf(".............pass\n")
 }
 
 

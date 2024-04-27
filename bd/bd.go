@@ -61,9 +61,9 @@ func getCpntFiles(name string)([]string) {
 }
 
 func dumpBd(bd *BD) {
-	for _, p := range bd.persist {
+	for i, p := range bd.persist {
 		a := p.ft.Name[:]
-		log.Printf("%s\n", string(a))
+		log.Printf("%d: %s\n", i, string(a))
 	}
 }
 
@@ -75,12 +75,11 @@ func (bd *BD)merge(p, q int) {
 	//如果上一级x10比下一级大，则合并
 	if ps * 10 > qs {
 		c := MergeCpnt(bd.name, int32(q), bd.seq,
-			bd.persist[p], bd.persist[q])
+				bd.persist[p], bd.persist[q])
 		bd.mutex.Lock()
 		bd.seq++
 		bd.persist[q] = c
-		bd.persist = append(bd.persist[:p],
-				bd.persist[p+1:]...)
+		bd.persist = append(bd.persist[:p], bd.persist[p+1:]...)
 		bd.mutex.Unlock()
 		RemoveCpnt(pp.Name)
 		RemoveCpnt(pq.Name)
@@ -89,23 +88,15 @@ func (bd *BD)merge(p, q int) {
 
 const WrLimit = 10
 func (bd *BD)Compaction() {
-	pl()
 	defer bd.wg.Done()
-	pl()
 	for !bd.closing {
 		select {
-		case a := <-bd.c:
-			pl()
-			fmt.Printf("aaa: len(bd.c)=%d, a=%d\n", len(bd.c), a)
+		case <-bd.c:
 		case <-time.After(1*time.Second):
-			pl()
 		}
-		pl()
 
-		pl()
 		//如果mutable里面大于10个block，则刷盘
 		if (bd.mutable.Size() > WrLimit) || bd.closing {
-		pl()
 			bd.immutable = bd.mutable
 			bd.mutable = CreateMemCpnt(bd.name + "_mut")
 			c := CreateCpnt(bd.name, int32(len(bd.persist)), bd.seq,
@@ -117,20 +108,15 @@ func (bd *BD)Compaction() {
 			bd.mutex.Unlock()
 		}
 
-		pl()
 		p := len(bd.persist) - 1
 		for p>0 && !bd.closing {
-			fmt.Printf("a0: p=%d\n", p)
 			p = len(bd.persist) - 1
-			fmt.Printf("a1: p=%d\n", p)
 			for p > 0 && !bd.closing {
 				q := p - 1
 				bd.merge(p, q)
 				p--
 			}
-			fmt.Printf("a2: p=%d\n", p)
 		}
-		pl()
 	}
 }
 
@@ -146,7 +132,6 @@ func NewBd(name string) *BD {
 
 //如果这个设备已经存在，则只能用Open打开
 func OpenBD(name string) (*BD, error) {
-
 	cpntFiles := getCpntFiles(name)
 	if len(cpntFiles)==0 {
 		return nil, fmt.Errorf("cpnt file is not found")
@@ -207,6 +192,7 @@ func (bd *BD) ReadAt(lba int64) (blk []byte, ok bool) {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 
+
 	if b, ok := bd.mutable.ReadAt(lba); ok {
 		return b, true
 	}
@@ -218,7 +204,7 @@ func (bd *BD) ReadAt(lba int64) (blk []byte, ok bool) {
 	}
 
 	n := len(bd.persist)
-	for i:=n-1; i>=0; i++ {
+	for i:=n-1; i>=0; i-- {
 		if b, ok := bd.persist[i].ReadAt(lba); ok {
 			return b, true
 		}
@@ -238,9 +224,7 @@ func (bd *BD) WriteAt(lba int64, blk []byte) (ok bool) {
 	bd.mutex.Unlock()
 
 	if bd.mutable.Size() > WrLimit {
-		fmt.Printf("len(bd.c)=%d\n", len(bd.c))
 		bd.c <- 1
-		pl()
 	}
 	return ok
 }
