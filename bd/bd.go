@@ -68,11 +68,12 @@ func dumpBd(bd *BD) {
 }
 
 func (bd *BD)merge(p, q int) {
-	ps := bd.persist[p].Size()
-	qs := bd.persist[q].Size()
+	pp := bd.persist[p]
+	pq := bd.persist[q]
+	ps := pp.Size()
+	qs := pq.Size()
 	//如果上一级x10比下一级大，则合并
 	if ps * 10 > qs {
-		bd.mutex.Unlock()
 		c := MergeCpnt(bd.name, int32(q), bd.seq,
 			bd.persist[p], bd.persist[q])
 		bd.mutex.Lock()
@@ -80,6 +81,9 @@ func (bd *BD)merge(p, q int) {
 		bd.persist[q] = c
 		bd.persist = append(bd.persist[:p],
 				bd.persist[p+1:]...)
+		bd.mutex.Unlock()
+		RemoveCpnt(pp.Name)
+		RemoveCpnt(pq.Name)
 	}
 }
 
@@ -98,20 +102,19 @@ func (bd *BD)Compaction() {
 		}
 		pl()
 
-		bd.mutex.Lock()
 		pl()
 		//如果mutable里面大于10个block，则刷盘
 		if (bd.mutable.Size() > WrLimit) || bd.closing {
 		pl()
 			bd.immutable = bd.mutable
 			bd.mutable = CreateMemCpnt(bd.name + "_mut")
-			bd.mutex.Unlock()
 			c := CreateCpnt(bd.name, int32(len(bd.persist)), bd.seq,
 						bd.immutable)
 			bd.mutex.Lock()
 			bd.seq++
 			bd.persist = append(bd.persist, c)
 			bd.immutable = nil
+			bd.mutex.Unlock()
 		}
 
 		pl()
@@ -128,7 +131,6 @@ func (bd *BD)Compaction() {
 			fmt.Printf("a2: p=%d\n", p)
 		}
 		pl()
-		bd.mutex.Unlock()
 	}
 }
 

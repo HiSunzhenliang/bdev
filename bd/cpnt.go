@@ -83,6 +83,7 @@ type LbaOff struct {
 
 //这是一个LSM tree的component类型，是存储在硬盘上的
 type Cpnt struct {
+	Name string
 	a *aof.AOF
 	lo []LbaOff
 	ft CpntFooter
@@ -123,6 +124,7 @@ func (ft *CpntFooter)AssignName(name string) {
 func newCpnt(baseName string, level, seq int32) (*Cpnt, *CpntFooter) {
 	name := fmt.Sprintf("%s-%d-%d.cpnt", baseName, level, seq)
 	c := &Cpnt{}
+	c.Name = name
 	ft := &c.ft
 	ft.AssignName(name)
 	ft.Level = level
@@ -167,7 +169,6 @@ func writeFooter(c *Cpnt, ft *CpntFooter) {
 
 //把一个内存Component写入硬盘，变成一个持久化的Component
 func CreateCpnt(name string, level, seq int32, m *MemCpnt) *Cpnt {
-
 	c, ft := newCpnt(name, level, seq)
 	ft.NumBlk = int64(len(m.lb))
 	ft.IdxOff = ft.NumBlk * BlkSize
@@ -200,6 +201,7 @@ func OpenCpnt(name string) (*Cpnt, error) {
 
 	//打开AOF文件
 	c := &Cpnt{}
+	c.Name = name
 	a, err := aof.Open(name)
 	if err != nil {
 		log.Fatalf("create AOF file error\n")
