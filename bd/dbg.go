@@ -29,4 +29,8 @@ func getPos() string {
 	return fname
 }
 
+func pl() {
+	fmt.Printf("run at %s\n", getPos())
+}
+
 

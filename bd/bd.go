@@ -150,6 +150,8 @@ func OpenBD(name string) (*BD, error) {
 	//对persist进行排序
 	sort.Sort(TreeCpnt(bd.persist))
 
+	go bd.Compaction()
+
 	return bd, nil
 }
 
@@ -163,12 +165,15 @@ func CreateBD(name string) (*BD, error) {
 
 	bd := NewBd(name)
 
+	go bd.Compaction()
+
 	return bd, nil
 }
 
 func (bd *BD)Close() {
 	bd.mutex.Lock()
 	bd.wg.Add(1)
+	bd.closing = true
 	bd.c <- 2
 	bd.mutex.Unlock()
 	bd.wg.Wait()

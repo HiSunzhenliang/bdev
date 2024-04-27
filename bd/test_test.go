@@ -126,8 +126,16 @@ func TestCpnt3A(t *testing.T) {
 
 }
 
-func TestOpenBD3A(t *testing.T) {
+func TestCreateBD3A(t *testing.T) {
+	fmt.Printf("CreateDB3A\n")
+	db, err := CreateBD("testa")
+	Assert(err == nil)
 
-	_, _ = OpenBD("./test")
+	db.Close()
 }
+
+func TestOpenBD3A(t *testing.T) {
+	fmt.Printf("OpenDB3A\n")
+}
+
 
