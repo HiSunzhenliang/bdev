@@ -74,7 +74,7 @@ func (f *AOF) Append(b []byte) int64 {
 	return off
 }
 
-//从文件的某个位置读出len(b)这么多数据
+//关闭AOF文件
 func (f *AOF) Close() error {
 	return f.f.Close()
 }
