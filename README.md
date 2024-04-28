@@ -33,9 +33,22 @@ update-in-place之间的转换。
 对于存储行业研发人员来说，基于Append-only语义存储接口，如何实现update-in-place
 接口，已经是必备知识了。
 
-## 简介
+## BDEV
 
+如下图所示，BDEV是一个基于append-only接口实现的nbd server。通过Linux内核的nbd
+client可以链接到这个nbd server上，就可以看到Linux主机上增加了一个新的块设备
+/dev/nbd0，然后可以在这个块设备上创建文件系统，挂载这个块设备。
 
+BDEV中nbd-server协议层代码，直接用[go-nbd](https://github.com/pojntfx/go-nbd)的
+实现。块设备本身Write-in-place的语义，bdev/bd这个目录中的源码实现的。几个子目录
+中源码功能如下：
+
+* 主目录 - main.go, nbd-server.go，这两个是程序入口，也是nbd-server的主循环。
+* aof - 这里面是一个append-only语义的文件接口
+* bd - 这里面实现了一个简化的LSM Tree，也就是基于append-only接口实现了块设备所
+  需的update-in-place接口。
+* backend - 这里面是nbd-server需要的存储后端接口。这里面的代码没有实际功能，
+  只是负责bd里面的update-in-place接口跟nbd-server需要的接口粘合起来。
 
 ![bdev](pics/bdev.png)
 
@@ -85,4 +98,8 @@ func (f *AOF) Close() error
 
 ```
 
+## BDEV快速操作入门
+
+
+(结束)
 
