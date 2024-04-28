@@ -1,7 +1,7 @@
 
 # BDEV: 基于Append-Only存储实现的块设备
 
-## 背景
+## 1. 背景
 
 这是一个用于学习存储技术练习项目。Append-Only语义的接口，在存储系统中很常见。
 但是很多上层应用不能直接使用Append-Only语义的存储接口，一般要求update-in-place
@@ -33,7 +33,7 @@ update-in-place之间的转换。
 对于存储行业研发人员来说，基于Append-only语义存储接口，如何实现update-in-place
 接口，已经是必备知识了。
 
-## BDEV
+## 2. BDEV
 
 如下图所示，BDEV是一个基于append-only接口实现的nbd server。通过Linux内核的nbd
 client可以链接到这个nbd server上，就可以看到Linux主机上增加了一个新的块设备
@@ -53,7 +53,7 @@ BDEV中nbd-server协议层代码，直接用[go-nbd](https://github.com/pojntfx/
 ![bdev](pics/bdev.png)
 
 
-## 底层append-only接口(AOF)
+## 3. 底层append-only接口(AOF)
 
 用golang描述的底层append-only接口如下
 
@@ -63,10 +63,8 @@ type AOF struct {
         f *os.File
 }
 
-
 //对已经存在的AOF文件，用open打开
 func Open(name string) (a *AOF, err error)
-
 
 //对不存在的AOF文件，用Create创建
 func Create(name string) (a *AOF, err error)
@@ -98,8 +96,22 @@ func (f *AOF) Close() error
 
 ```
 
-## BDEV快速操作入门
+## 4. BDEV快速操作入门
 
+## 4.1. 下载BDEV
+
+## 4.2. 下载go-nbd
+
+## 4.3. 编译go-nbd-client
+
+## 4.4. 运行nbd-server
+
+## 4.5. 运行nbd-client
+
+## 4.6. 创建文件系统
+
+## 4.7. mount文件系统
 
 (结束)
+
 
