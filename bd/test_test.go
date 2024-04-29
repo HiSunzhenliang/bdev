@@ -114,7 +114,6 @@ func TestCpnt3A(t *testing.T) {
 	c4, err := OpenCpnt("test-0-3.cpnt")
 	Assert(err == nil)
 
-
 	for i:=int64(0); i<5; i++ {
 		b, ok := c4.ReadAt(i)
 		Assert(ok)
@@ -126,6 +125,22 @@ func TestCpnt3A(t *testing.T) {
 		Assert(ok)
 		Assert(b[0]==byte(10+i))
 	}
+
+
+	//测试随机长度
+	m1 = CreateMemCpnt("cpnt-1-2.mem")
+	n := RangeRand(10, 1000)
+	fmt.Printf("n = %d\n", n)
+	for i:=int64(0); i<int64(n); i++ {
+		b := getBuf(i, i)
+		m1.WriteAt(i, b)
+	}
+	b = getBuf(20, 20)
+	m1.WriteAt(20, b)
+	c1 = CreateCpnt("test", 0, 5, m1)
+	b1, o1 = c1.ReadAt(1)
+	Assert(o1)
+	Assert(b1[0] == 1)
 
 	fmt.Printf("...............pass\n")
 }

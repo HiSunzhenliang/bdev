@@ -99,17 +99,70 @@ func (f *AOF) Close() error
 ## 4. BDEV快速操作入门
 
 ## 4.1. 下载BDEV
-直接从gitee上下载，`git clone git@gitee.com:mphyatyh/bdev.git`。
+从gitee上下载，`git clone git@gitee.com:mphyatyh/bdev.git`。
 
 ## 4.2. 下载go-nbd
+从github上下载，`git clone git@github.com:pojntfx/go-nbd.git`。
 
 ## 4.3. 编译go-nbd-client
+进入go-nbd-client所在目录，执行`go build`，然后用`ls`命令，可以看到生成了一个
+`go-nbd-example-client`可执行程序。
 
-## 4.4. 运行nbd-server
+```shell
+root@hy:~/go-nbd/cmd/go-nbd-example-client# go build
+root@hy:~/go-nbd/cmd/go-nbd-example-client# ls -lah
+total 3.3M
+drwxr-xr-x 2 root root 4.0K Apr 26 21:48 .
+drwxr-xr-x 5 root root 4.0K Apr 23 21:46 ..
+-rwxr-xr-x 1 root root 3.3M Apr 29 09:06 go-nbd-example-client
+-rw-r--r-- 1 root root 1.4K Apr 23 21:46 main.go
+```
+
+## 4.4. 编译并运行nbd-server
+进入bdev目录，执行`make`编译bdev。然后装入nbd模块，并运行`./bdev`。
+```shell
+root@hy:~/bdev# make
+go build
+root@hy:~/bdev#
+root@hy:~/bdev# modprobe nbd
+root@hy:~/bdev# ./bdev
+2024/04/29 09:11:31 Listening on [::]:10809
+```
 
 ## 4.5. 运行nbd-client
 
+进入go-nbd/cmd/go-nbd-example-client目录，执行go-nbd-example-client命令。
+```shell
+root@hy:~/go-nbd/cmd/go-nbd-example-client# ./go-nbd-example-client
+2024/04/29 09:34:26 Connected to 127.0.0.1:10809
+```
+
+此时应该可以看到bdev进程有如下输出，即表示nbd-client已经链接上了。
+```shell
+root@hy:~/bdev# ./bdev
+2024/04/29 09:33:11 Listening on [::]:10809
+2024/04/29 09:34:26 1 clients connected
+```
+
 ## 4.6. 创建文件系统
+执行lsblk，可以看到一个nbd0的块设备，表明bdev已经正常工作。
+```shell
+root@hy:~# lsblk
+NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda                         8:0    0   80G  0 disk
+├─sda1                      8:1    0    1M  0 part
+├─sda2                      8:2    0    1G  0 part /boot
+└─sda3                      8:3    0   79G  0 part
+  └─ubuntu--vg-ubuntu--lv 253:0    0   79G  0 lvm  /
+sdb                         8:16   0   40G  0 disk /usr1
+sr0                        11:0    1 1024M  0 rom
+nbd0                       43:0    0  100M  0 disk
+```
+
+执行`mkfs.ext4 /dev/nbd0`创建文件系统。
+```shell
+
+```
 
 ## 4.7. mount文件系统
 
