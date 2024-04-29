@@ -120,7 +120,7 @@ func (f *AOF) Close() error
 可以保证数据的一致性性。
 
 可以把aof目录中的append-only接口修改为真正的分布式append-only接口，这就实现了
-阿里云的EBS+Pangu的主干共功能。
+阿里云的EBS+Pangu的主要功能。
 
 ## (结束)
 
