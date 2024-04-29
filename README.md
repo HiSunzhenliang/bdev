@@ -161,10 +161,47 @@ nbd0                       43:0    0  100M  0 disk
 
 执行`mkfs.ext4 /dev/nbd0`创建文件系统。
 ```shell
+root@hy:~/bdev# mkfs.ext4 /dev/nbd0
+mke2fs 1.45.6 (20-Mar-2020)
+Creating filesystem with 25600 4k blocks and 25600 inodes
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (1024 blocks): done
+Writing superblocks and filesystem accounting information: done
 
 ```
 
 ## 4.7. mount文件系统
+执行下面命令，安装这个把/dev/nbd0这个块设备mount到/mnt/bdev这个目录。
+
+```shell
+root@hy:~/bdev# mount /dev/nbd0 /mnt/bdev/
+```
+
+执行下面命令检查是否mount成功。
+```shell
+root@hy:~/bdev# mount -l -t ext4
+/dev/mapper/ubuntu--vg-ubuntu--lv on / type ext4 (rw,relatime)
+/dev/sdb on /usr1 type ext4 (rw,relatime)
+/dev/sda2 on /boot type ext4 (rw,relatime)
+/dev/nbd0 on /mnt/bdev type ext4 (rw,relatime)
+```
+
+执行下面命令，创建一个文件，创建一个目录。
+```shell
+root@hy:~/bdev# echo hello > /mnt/bdev/a.txt
+root@hy:~/bdev# cat /mnt/bdev/a.txt
+hello
+root@hy:~/bdev# mkdir /mnt/bdev/dir0
+root@hy:~/bdev# ls -lai /mnt/bdev/
+total 32
+      2 drwxr-xr-x 4 root root  4096 Apr 29 17:07 .
+2883585 drwxr-xr-x 4 root root  4096 Apr 29 09:37 ..
+     12 -rw-r--r-- 1 root root     6 Apr 29 17:06 a.txt
+     13 drwxr-xr-x 2 root root  4096 Apr 29 17:07 dir0
+     11 drwx------ 2 root root 16384 Apr 29 16:55 lost+found
+```
 
 ## 5. 未来工作
 
@@ -177,5 +214,4 @@ nbd0                       43:0    0  100M  0 disk
 阿里云的EBS+Pangu的主要功能。
 
 ## (结束)
-
 
