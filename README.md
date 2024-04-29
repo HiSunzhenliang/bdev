@@ -203,9 +203,10 @@ total 32
      11 drwx------ 2 root root 16384 Apr 29 16:55 lost+found
 ```
 
-## 5. mount文件系统
+## 5. 总结
 
-至此，已经实现了一个简单EBS系统的核心功能，用了不到1000行Golang代码。
+至此，已经实现了一个简单EBS系统的核心功能，用了不到1000行Golang代码。这个简单
+EBS系统的核心是一个简单的LSM Tree，它依赖的底层存储是Append-only语义的接口。
 
 ```
 root@hy:~/bdev# cloc .
