@@ -99,6 +99,7 @@ func (f *AOF) Close() error
 ## 4. BDEV快速操作入门
 
 ## 4.1. 下载BDEV
+直接从gitee上下载，`git clone git@gitee.com:mphyatyh/bdev.git`。
 
 ## 4.2. 下载go-nbd
 
