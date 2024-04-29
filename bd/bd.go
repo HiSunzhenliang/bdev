@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"sync/atomic"
 	"path/filepath"
 )
 
@@ -34,7 +35,7 @@ type BD struct {
 
 	c chan int	//这个channel用来通知compaction开始工作
 	seq int32
-	closing bool
+	closing int32
 	wg sync.WaitGroup
 }
 
@@ -86,19 +87,30 @@ func (bd *BD)merge(p, q int) {
 	}
 }
 
+const (
+	EvTimeout = 1
+	EvClosing = 2
+	EvSyncing = 3
+	EvOverflow = 4
+)
+
 const WrLimit = 10
 func (bd *BD)Compaction() {
 	defer bd.wg.Done()
-	for !bd.closing {
+	for {
+		ev := 0
 		select {
-		case <-bd.c:
+		case ev = <-bd.c:
 		case <-time.After(1*time.Second):
+			ev = EvTimeout
 		}
 
-		//如果mutable里面大于10个block，则刷盘
-		if (bd.mutable.Size() > WrLimit) || bd.closing {
+		//如果mutable里面大于10个block，或者退出，则刷盘
+		if (bd.mutable.Size() > WrLimit) || ev != EvTimeout {
+			bd.mutex.Lock()
 			bd.immutable = bd.mutable
 			bd.mutable = CreateMemCpnt(bd.name + "_mut")
+			bd.mutex.Unlock()
 			c := CreateCpnt(bd.name, int32(len(bd.persist)), bd.seq,
 						bd.immutable)
 			bd.mutex.Lock()
@@ -109,13 +121,17 @@ func (bd *BD)Compaction() {
 		}
 
 		p := len(bd.persist) - 1
-		for p>0 && !bd.closing {
+		for p>0 && ev != EvClosing {
 			p = len(bd.persist) - 1
-			for p > 0 && !bd.closing {
+			for p > 0 && ev != EvClosing {
 				q := p - 1
 				bd.merge(p, q)
 				p--
 			}
+		}
+
+		if ev == EvClosing && bd.mutable.Size()==0 {
+			break
 		}
 	}
 }
@@ -171,12 +187,21 @@ func CreateBD(name string) (*BD, error) {
 }
 
 func (bd *BD)Close() {
-	bd.mutex.Lock()
 	bd.wg.Add(1)
-	bd.closing = true
-	bd.mutex.Unlock()
-	bd.c <- 2
+	bd.c <- EvClosing
+	atomic.AddInt32(&bd.closing, 1)
 	bd.wg.Wait()
+	for _, p := range bd.persist {
+		p.Sync()
+		p.Close()
+	}
+}
+
+func (bd *BD)Sync() {
+	bd.c <- EvSyncing
+	for _, p := range bd.persist {
+		p.Sync()
+	}
 }
 
 //删掉已经存在的设备
@@ -218,12 +243,17 @@ func (bd *BD) ReadAt(lba int64) (blk []byte, ok bool) {
 //lba -- Logic Block Address，是一个数据块的地址，第1个512B的lba地址为0,
 //       第2个512B的lba地址为1, ...
 func (bd *BD) WriteAt(lba int64, blk []byte) (ok bool) {
+	if atomic.LoadInt32(&bd.closing) > 0 {
+		return false
+	}
+
 	bd.mutex.Lock()
 	ok = bd.mutable.WriteAt(lba, blk)
+	sz :=  bd.mutable.Size()
 	bd.mutex.Unlock()
 
-	if bd.mutable.Size() > WrLimit {
-		bd.c <- 1
+	if sz > WrLimit {
+		bd.c <- EvOverflow
 	}
 	return ok
 }

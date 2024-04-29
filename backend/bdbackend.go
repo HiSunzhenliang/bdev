@@ -70,6 +70,7 @@ func (b *BdBackend) Size() (int64, error) {
 }
 
 func (b *BdBackend) Sync() error {
+	b.Sync()
 	return nil
 }
 

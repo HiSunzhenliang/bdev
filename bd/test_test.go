@@ -130,7 +130,6 @@ func TestCpnt3A(t *testing.T) {
 	//测试随机长度
 	m1 = CreateMemCpnt("cpnt-1-2.mem")
 	n := RangeRand(10, 1000)
-	fmt.Printf("n = %d\n", n)
 	for i:=int64(0); i<int64(n); i++ {
 		b := getBuf(i, i)
 		m1.WriteAt(i, b)
@@ -195,6 +194,11 @@ func testReadBd(bd *BD, bmap map[int64][]byte) {
 	for lba, b0 := range(bmap) {
 		b1, ok := bd.ReadAt(lba)
 		Assert(ok)
+		if !sameBuf(b0, b1) {
+			fmt.Printf("lba = %d\n", lba)
+			fmt.Printf("b0 = %v\n", b0)
+			fmt.Printf("b1 = %v\n", b1)
+		}
 		Assert(sameBuf(b0, b1))
 	}
 }

@@ -79,3 +79,8 @@ func (f *AOF) Close() error {
 	return f.f.Close()
 }
 
+//关闭AOF文件
+func (f *AOF) Sync() error {
+	return f.f.Sync()
+}
+

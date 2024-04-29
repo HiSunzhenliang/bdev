@@ -6,6 +6,7 @@ import (
 	"log"
 	"fmt"
 	"bytes"
+	"sync"
 	"encoding/binary"
 )
 
@@ -20,15 +21,20 @@ type LbaBuf struct {
 type MemCpnt struct {
 	name string
 	lb []*LbaBuf
+	mu sync.Mutex
 }
 
 func CreateMemCpnt(name string) *MemCpnt {
 	mc := &MemCpnt{}
+	mc.mu.Lock()
 	mc.name = name
+	mc.mu.Unlock()
 	return mc
 }
 
 func (m *MemCpnt) Size() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return len(m.lb)
 }
 
@@ -60,6 +66,8 @@ func (m *MemCpnt) ReadIter(iter *int) (lba int64, blk []byte, ok bool) {
 
 //向一个内存component中写入一个blk
 func (m *MemCpnt) WriteAt(lba int64, blk []byte) (ok bool){
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	Assert(len(blk) == BlkSize)
 	b := make([]byte, BlkSize)
 	copy(b, blk)
@@ -178,7 +186,9 @@ func CreateCpnt(name string, level, seq int32, m *MemCpnt) *Cpnt {
 	}
 
 	for i:=0; i<len(m.lb); i++ {
+		m.mu.Lock()
 		off := c.a.Append(m.lb[i].buf)
+		m.mu.Unlock()
 		Assert(off == c.lo[i].Off)
 	}
 
@@ -190,7 +200,6 @@ func CreateCpnt(name string, level, seq int32, m *MemCpnt) *Cpnt {
 //打开硬盘上的一个持久化的cpnt。一个CPNT只能被写一次，因此打开之后的CPNT不能再
 //被改写，只能读。
 func OpenCpnt(name string) (*Cpnt, error) {
-
 	//获取aof文件的属性，目的是：1、判断文件是否存在，如果不存在，则
 	//返回错误；2、获取文件size，后面读取footer的时候会用到size；
 	st, err1 := aof.Stat(name)
@@ -313,6 +322,10 @@ func MergeCpnt(name string, level, seq int32, a *Cpnt, b *Cpnt) *Cpnt {
 	ft.IdxOff = ft.NumBlk * BlkSize
 	writeFooter(c, ft)
 	return c
+}
+
+func (c *Cpnt) Sync() {
+	c.a.Sync()
 }
 
 //在LbaOff数组中查找lba，如果找到则返回index和true
